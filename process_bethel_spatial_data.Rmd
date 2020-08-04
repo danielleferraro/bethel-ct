@@ -1,0 +1,100 @@
+---
+title: "Download and process spatial data for Bethel, CT"
+author: "Danielle Ferraro"
+date: "8/3/2020"
+output: html_document
+---
+
+# Introduction
+
+Here I use the `tigris` package to download shapefiles from the US Census of Connecticut's roads and town boundaries.
+
+# Setup
+
+```{r}
+library(here)
+library(tidyverse)
+library(sf)
+library(tigris)
+```
+
+# Read in data
+
+I used the [tigris](https://github.com/walkerke/tigris) package to directly download TIGER/Line shapefiles of town boundaries and other data for Fairfield county. Note: TIGER stands for Topologically Integrated Geographic Encoding and Referencing and is the format used by the US Census Bureau. In addition to town boundaries, I also downloaded road and hydrography data. 
+```{r}
+# Census subdvisions, aka towns
+fairfield_towns <- county_subdivisions(state = "CT", county = "Fairfield")
+
+# Roads
+fairfield_roads <- roads(state = "CT", county = "Fairfield")
+
+# Hydrology
+fairfield_water_linear <- linear_water(state = "CT", county = "Fairfield")
+fairfield_water_area <- area_water(state = "CT", county = "Fairfield")
+```
+
+I also defined a set of personal data points that I wanted to layer on top.
+```{r}
+our_places <- tibble(name = c("6 Terry Drive", "20 Cortland Drive"),
+                     x = c(-73.394546, -73.382509),
+                     y = c(41.387528, 41.403420)
+)
+```
+
+# Subset data
+
+After subsetting the town boundaries to Bethel only, I can use that to clip the additional data.
+```{r}
+bethel_boundary <- filter(fairfield_towns, NAME == "Bethel")
+bethel_roads <- st_intersection(fairfield_roads, bethel_boundary)
+bethel_water_linear <- st_intersection(fairfield_water_linear, bethel_boundary)
+bethel_water_area <- st_intersection(fairfield_water_area, bethel_boundary)
+```
+
+# Plot
+
+Grayscale:
+```{r}
+ggplot() +
+  # Water
+  geom_sf(data = bethel_water_area, fill = "lightsteelblue", color = NA) +
+  geom_sf(data = bethel_water_linear, color = "lightsteelblue", size = 0.2) +
+  # Town border
+  geom_sf(data = bethel_boundary, fill = NA, color = "gray40") +
+  # Roads- make main roads darker and thicker
+  geom_sf(data = bethel_roads %>% filter(RTTYP %in% c("I", "S")), fill = NA, color = "gray30", size = 0.5) + 
+  geom_sf(data = bethel_roads %>% filter(!RTTYP %in% c("I", "S")), fill = NA, color = "gray40", size = 0.3) + 
+  # Personal points
+  geom_point(data = our_places, aes(x = x, y = y), size = 1, color = "gray10") +
+  geom_text(data = our_places, aes(x = x, y = y, label = name), size = 2, color = "gray10", fontface = "italic", hjust = -0.1) +
+  # Add labels and theme
+  labs(caption = 'Bethel, Connecticut') +
+  theme_void() +
+  theme(plot.caption = element_text(color = "grey10", size = 90, hjust = 0.5, family = "Didot"))
+```
+
+Color:
+```{r}
+# ggplot() +
+#   # Town border
+#   geom_sf(data = bethel_boundary, fill = NA, color = "white") +
+#   # Roads- make main roads darker and thicker
+#   geom_sf(data = bethel_roads %>% filter(RTTYP %in% c("I", "S")), fill = NA, color = "white", size = 0.5) + 
+#   geom_sf(data = bethel_roads %>% filter(!RTTYP %in% c("I", "S")), fill = NA, color = "white", size = 0.3) + 
+#   # Water
+#   geom_sf(data = bethel_water_area, fill = "lightsteelblue", color = NA) +
+#   geom_sf(data = bethel_water_linear, color = "lightsteelblue", size = 0.2) +
+#   # Personal points
+#   geom_point(data = our_places, aes(x = x, y = y), size = 1, color = "white") +
+#   geom_text(data = our_places, aes(x = x, y = y, label = name), size = 2, color = "white", fontface = "italic", hjust = -0.1) +
+#   # Add theme
+#   theme_void() +
+#   theme(plot.caption = element_text(color = "white", size = 90, hjust = 0.5, family = "Didot"),
+#         plot.background = element_rect(fill = "maroon"))
+```
+
+# Save
+
+```{r}
+ggsave(here("bethel.png"), width = 297, height = 420, units = "mm", dpi = "retina")
+```

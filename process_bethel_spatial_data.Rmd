@@ -2,7 +2,7 @@
 title: "Download and process spatial data for Bethel, CT"
 author: "Danielle Ferraro"
 date: "8/3/2020"
-output: html_document
+output: pdf_document
 ---
 
 # Introduction
@@ -37,7 +37,7 @@ fairfield_water_area <- area_water(state = "CT", county = "Fairfield")
 ```
 
 
-I also defined a set of personal data points that I wanted to layer on top.
+I also defined a set of data points that I wanted to layer on top - the homes I lived in!
 ```{r}
 our_places <- tibble(name = c("6 Terry Drive", "20 Cortland Drive"),
                      x = c(-73.394546, -73.382509),
@@ -77,16 +77,13 @@ plot(bethel_water_area[1])
 Choose a font for the plot title.
 ```{r}
 library(showtext)
-font_add_google(name = "Cormorant", family = "cormorant") # serif
 font_add_google(name = "Montserrat", family  = "Montserrat") # sans serif
 showtext_auto() # Loads the fonts
 ```
 
 Plot:
 ```{r}
-water_col <- "#BCCFD0" # pale blue
 water_col <- "#7cc3c4" # bright turquoise
-background_col <- "#7A7A7A" # dark gray
 background_col <- "#2C3546" # deep gray/navy
 
 ggplot() +
@@ -96,14 +93,14 @@ ggplot() +
   geom_sf(data = bethel_water_linear, color = water_col, size = 0.7) +
 
   # Roads - make main roads darker and thicker
-  geom_sf(data = bethel_roads %>% filter(RTTYP %in% c("I", "S")), fill = NA, color = "white", size = 0.6) + 
-  geom_sf(data = bethel_roads %>% filter(!RTTYP %in% c("I", "S")), fill = NA, color = "white", size = 0.4) + 
+  geom_sf(data = bethel_roads %>% filter(RTTYP %in% c("I", "S")), fill = NA, color = "white", size = 0.5) + 
+  geom_sf(data = bethel_roads %>% filter(!RTTYP %in% c("I", "S")), fill = NA, color = "white", size = 0.3) + 
   
   # Rails
-  geom_sf(data = bethel_rails, linetype = "twodash", size = 1, color = "white") +
+  geom_sf(data = bethel_rails, linetype = "twodash", size = 0.9, color = "white") +
     
   # Town border
-  geom_sf(data = bethel_boundary, size = 1, fill = NA, color = "#FFFFFF4D") + # Hex code refers to white, last two letters define the transparency
+  geom_sf(data = bethel_boundary, size = 1, fill = NA, color = "#FFFFFF") + # Hex code refers to white, last two letters define the transparency
   
   # Personal points
   geom_point(data = our_places, aes(x = x, y = y), size = 1, color = "white") +
@@ -120,5 +117,5 @@ ggplot() +
 # Save
 
 ```{r eval = FALSE}
-ggsave(here("bethel.pdf"), width = 297, height = 420, units = "mm", dpi = "retina")
+ggsave(here("bethel.pdf"), width = 11, height = 17, units = "in", dpi = "retina")
 ```

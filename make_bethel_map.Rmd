@@ -21,9 +21,10 @@ library(here)
 library(tidyverse)
 library(sf)
 library(tigris) # Data source
+library(smoothr) 
 library(showtext) # Fonts, depends on {sysfonts}
 library(ggimage) # For geom_image()
-library(smoothr) 
+library(colorspace) # For darken()
 ```
 
 # Read in data
@@ -90,11 +91,12 @@ font_add_google(name = "Assistant", family = "Assistant")
 showtext_auto() # Loads the fonts
 ```
 
-Plot:
+Put it all together! In V2 I used `st_intersection()` and `st_difference()` right in the ggplot call to isolate data inside and outside of the town border, in order to color them differently.
 ```{r}
 water_col <- "#7cc3c4" # bright turquoise
 background_col <- "#2C3546" # deep gray/navy
 
+# V1 - all roads/rails white
 ggplot() +
   
   # Water
@@ -109,23 +111,64 @@ ggplot() +
   geom_sf(data = bethel_rails, linetype = "twodash", size = 0.5, color = "white") +
     
   # Town border
-  geom_sf(data = bethel_boundary, size = 1, fill = NA, color = "#FFFFFF") + # Hex code refers to white, last two letters define the transparency
+  geom_sf(data = bethel_boundary, size = 1, fill = NA, color = "white") + 
   
   # Personal points
   geom_image(data = our_places, aes(x = x, y = y, image = img), size = 0.01, asp = 0.75, nudge_x = 0.00025) +
-  #geom_text(data = our_places, aes(x = x, y = y, label = name), size = 3, color = "white", family = "Assistant", fontface = "bold", hjust = -0.15) +
-    geom_label(data = our_places, aes(x = x, y = y, label = name), size = 3, label.size = NA, alpha = 0.1, color = "white", family = "Assistant", fontface = "bold", hjust = -0.15) +
+  geom_text(data = our_places, aes(x = x, y = y, label = name), size = 3, color = "white", family = "Assistant", fontface = "bold", hjust = -0.17) +
+  #geom_label(data = our_places, aes(x = x, y = y, label = name), size = 3, label.size = NA, alpha = 0.1, color = "white", family = "Assistant", fontface = "bold", hjust = -0.15) +
+  
+  # Annotate sneaky signature in Huntington Pond
+  annotate(geom = "text", x = -73.357900, y = 41.343654, label = "DMF\n2020", color = darken(water_col), size = 0.8, alpha = 0.4) +
   
   # Add labels and theme
-  #labs(caption = 'Bethel, Connecticut') +
   labs(caption = "BETHEL | CONNECTICUT") +
   theme_void() +
   theme(plot.caption = element_text(color = "white", size = 50, hjust = 0.5, family = "Montserrat"),
-        plot.background = element_rect(fill = background_col))
+        plot.background = element_rect(fill = background_col),
+        plot.margin = unit(c(0.25,0.77,0.5,0.77),"in")) # Temporary hack to make bg color fill the pdf
+
+
+# V2 - with roads/rails outside Bethel grayed out 
+ggplot() +
+  
+  # Water
+  geom_sf(data = bethel_water_area, fill = water_col, color = NA) +
+  geom_sf(data = bethel_water_linear, color = water_col, size = 0.7) +
+  
+  # Roads - make main roads darker and thicker
+  geom_sf(data = st_intersection(bethel_roads, bethel_boundary) %>% filter(RTTYP %in% c("I", "S")), fill = NA, color = "white", size = 0.5) + 
+  geom_sf(data = st_intersection(bethel_roads, bethel_boundary) %>% filter(!RTTYP %in% c("I", "S")), fill = NA, color = "white", size = 0.2) + 
+  
+  geom_sf(data = st_difference(bethel_roads, bethel_boundary) %>% filter(RTTYP %in% c("I", "S")), fill = NA, color = darken("white", 0.3), size = 0.5) + 
+  geom_sf(data = st_difference(bethel_roads, bethel_boundary) %>% filter(!RTTYP %in% c("I", "S")), fill = NA, color = darken("white", 0.3), size = 0.2) +
+  
+  # Rails
+  geom_sf(data = st_intersection(bethel_rails, bethel_boundary), linetype = "twodash", size = 0.5, color = "white") +
+  geom_sf(data = st_difference(bethel_rails, bethel_boundary), linetype = "twodash", size = 0.5, color = darken("white", 0.3)) +
+  
+  # Town border
+  geom_sf(data = bethel_boundary, size = 1, fill = NA, color = "white") + 
+  
+  # Personal points
+  geom_image(data = our_places, aes(x = x, y = y, image = img), size = 0.01, asp = 0.75, nudge_x = 0.00025) +
+  geom_text(data = our_places, aes(x = x, y = y, label = name), size = 3, color = "white", family = "Assistant", fontface = "bold", hjust = -0.17) +
+  #geom_label(data = our_places, aes(x = x, y = y, label = name), size = 3, label.size = NA, alpha = 0.1, color = "white", family = "Assistant", fontface = "bold", hjust = -0.15) +
+  
+  # Annotate sneaky signature in Huntington Pond
+  annotate(geom = "text", x = -73.357900, y = 41.343654, label = "DMF\n2020", color = darken(water_col), size = 0.8, alpha = 0.4) +
+  
+  # Add labels and theme
+  labs(caption = "BETHEL | CONNECTICUT") +
+  theme_void() +
+  theme(plot.caption = element_text(color = "white", size = 50, hjust = 0.5, family = "Montserrat"),
+        plot.background = element_rect(fill = background_col),
+        plot.margin = unit(c(0.25,0.77,0.5,0.77),"in")) # Temporary hack to make bg color fill the pdf
 ```
+
 
 # Save
 
 ```{r eval = FALSE}
-ggsave(here("bethel.pdf"), width = 11, height = 17, units = "in", dpi = "retina")
+ggsave(here("bethel_v2.pdf"), width = 12, height = 16, units = "in", dpi = "retina")
 ```

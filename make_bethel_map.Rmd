@@ -1,13 +1,18 @@
 ---
-title: "Download and process spatial data for Bethel, CT"
+title: "Make hometown map art"
 author: "Danielle Ferraro"
-date: "8/3/2020"
+date: "`r Sys.Date()`"
 output: pdf_document
 ---
 
-# Introduction
+# About
 
-Here I use the `tigris` package to download shapefiles from the US Census of Connecticut's roads and town boundaries.
+For the holidays this year, I wanted to give my parents a map of my hometown (heyo Bethel, CT) that could be printed and hung on a wall. This is what I came up with, using my beloved ggplot.
+
+Some maps that inspired me:
+
+- [](https://twitter.com/taraskaduk/status/1207295701983670274) 
+- [](https://erdavis.com/2019/07/27/the-beautiful-hidden-logic-of-cities/)
 
 # Setup
 
@@ -16,20 +21,22 @@ library(here)
 library(tidyverse)
 library(sf)
 library(tigris) # Data source
-library(showtext) # Fonts
+library(showtext) # Fonts, depends on {sysfonts}
 library(ggimage) # For geom_image()
 library(smoothr) 
 ```
 
 # Read in data
 
-I used the [tigris](https://github.com/walkerke/tigris) package to directly download TIGER/Line shapefiles of town boundaries and other data for Fairfield county. Note: TIGER stands for Topologically Integrated Geographic Encoding and Referencing and is the format used by the US Census Bureau. In addition to town boundaries, I also downloaded road and hydrography data. 
+I used the [tigris](https://github.com/walkerke/tigris) package to directly download TIGER/Line shapefiles of town boundaries and other data for Fairfield county. Note: TIGER stands for Topologically Integrated Geographic Encoding and Referencing and is the format used by the US Census Bureau. There are a lot of different datasets from which you could download the same or similar data, such as OpenStreetMap. I poked around a few different data sources when starting this project, but found the `tigris` package had everything I needed and was simple to use. 
 ```{r}
 # Census subdvisions, aka towns
 fairfield_towns <- county_subdivisions(state = "CT", county = "Fairfield")
 
-# Roads and rails
+# Roads
 fairfield_roads <- roads(state = "CT", county = "Fairfield")
+
+# Rails
 rails <- rails() # National dataset
 fairfield_rails <- st_intersection(rails, fairfield_towns)
 
@@ -37,7 +44,6 @@ fairfield_rails <- st_intersection(rails, fairfield_towns)
 fairfield_water_linear <- linear_water(state = "CT", county = "Fairfield")
 fairfield_water_area <- area_water(state = "CT", county = "Fairfield")
 ```
-
 
 I also defined a set of data points that I wanted to layer on top - the homes I lived in! I found a house icon to use to mark them on the map.
 ```{r}
@@ -50,7 +56,7 @@ our_places$img <- here("house_icon.png")
 
 # Subset data
 
-Subset Bethel town boundary, and define bounding box coordinates to crop the other data prior to plotting. The area will include Bethel with a small buffer around it.
+Subset Bethel town boundary, and define bounding box coordinates to crop the other data prior to plotting. The area will include Bethel with a small buffer around it. It is easier (faster) to crop the data now then to do so while plotting.
 ```{r}
 bethel_boundary <- filter(fairfield_towns, NAME == "Bethel")
 
@@ -64,12 +70,12 @@ bethel_rails <- st_crop(rails, bbox)
 
 # Light data tweaking
 
-Some of the water area polygons are quite jagged. 
+Some of the water area polygons are kinda jagged. 
 ```{r}
 plot(bethel_water_area[1])
 ```
 
-With the `smoothr::smooth()` function, I can smooth those polygons to make them a bit more aesthetically pleasing.
+I can smooth those polygons to make them a bit more aesthetically pleasing with the `smoothr::smooth()` function.
 ```{r}
 bethel_water_area <- smooth(bethel_water_area, method = "chaikin")
 plot(bethel_water_area[1])
@@ -77,7 +83,7 @@ plot(bethel_water_area[1])
 
 # Plot
 
-Choose fonts for the plot title and text labels.
+Choose fonts for the plot title and text labels. I learned you can download Google Fonts with the `sysfonts::font_add_google()` function, and manually browsed through them at [fonts.google.com](https://fonts.google.com/) til I found ones I liked.
 ```{r}
 font_add_google(name = "Montserrat", family  = "Montserrat")
 font_add_google(name = "Assistant", family = "Assistant")
